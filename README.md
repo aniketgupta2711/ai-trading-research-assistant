@@ -53,7 +53,7 @@ the same endpoint.
 - **Express** — REST API (`/api/experiments`)
 - **React** — frontend UI (create-react-app style, no extra framework)
 - **Node.js** — server runtime
-- **Claude API (Anthropic)** — does the actual question → structure parsing
+- **Google Gemini API** (free tier) — does the actual question → structure parsing
 
 ## How to run this locally
 
@@ -66,7 +66,7 @@ cp .env.example .env
 ```
 
 Open `.env` and fill in:
-- `ANTHROPIC_API_KEY` — get one from https://console.anthropic.com/
+- `GEMINI_API_KEY` — get a free key from https://aistudio.google.com/apikey
 - `MONGODB_URI` — either a local MongoDB (`mongodb://127.0.0.1:27017/trading_research_assistant`)
   or a free MongoDB Atlas cluster connection string
 
@@ -77,6 +77,62 @@ npm run dev
 ```
 
 Server runs on `http://localhost:5000`.
+
+### 2. Frontend setup
+
+In a new terminal:
+
+```bash
+cd client
+npm install
+npm start
+```
+
+App opens on `http://localhost:3000`. It automatically forwards `/api/*`
+calls to the backend on port 5000 (see the `"proxy"` field in
+`client/package.json`).
+
+### 3. Try it
+
+Type a question like:
+> Does buying NIFTY after a 1% fall work better during high-volatility periods?
+
+You'll see the structured experiment appear, with any missing fields (like
+exit condition or holding period) flagged in red, along with a question
+asking you to fill them in.
+
+## Key decisions
+
+- **Why Gemini API instead of a paid LLM?** Used Google's Gemini API since it
+  has a generous free tier, which made sense for a small prototype like this.
+  The prompt/parsing approach is model-agnostic — swapping in a different LLM
+  provider would only mean changing the API call in `experimentController.js`.
+- **Why Gemini API directly instead of a chatbot UI?** The assignment
+  specifically says not to build "simply a chatbot wrapper." So the AI is
+  used as an internal parsing/extraction step, and the user never talks to
+  the AI directly — they only see the structured output and the specific
+  clarifying question it decided to ask.
+- **Why store history in MongoDB?** The brief mentions the eventual system
+  should "remember what it learned." Full memory/learning is out of scope
+  for this small prototype, but storing every past question is a first
+  step toward that, and it's a natural fit for the "M" in MERN.
+- **Why not build a backtesting engine?** Explicitly marked optional/bonus
+  in the assignment. Left out to keep the scope to what was asked.
+- **Why does the API call retry automatically?** The free tier occasionally
+  returns transient errors (503 when the model is overloaded, 429 when
+  briefly rate-limited). Rather than surfacing these to the user
+  immediately, the backend retries up to 3 times with a short backoff, since
+  these errors usually resolve within a second or two.
+
+## What I'd improve with more time
+
+- Show the user's past questions (history) in the UI, not just in the database.
+- Let the user edit a structured field directly instead of only answering
+  free-text clarifying questions.
+- Add basic validation/tests around the LLM's JSON output, since LLM
+  responses can occasionally be malformed.
+- Move the system prompt into a versioned prompt file so it's easier to
+  iterate on the extraction quality separately from the rest of the code.
 
 ### 2. Frontend setup
 
